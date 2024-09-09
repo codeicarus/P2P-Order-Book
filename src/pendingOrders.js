@@ -1,34 +1,6 @@
-import React, { useState, useEffect } from 'react';
-// import axios from 'axios';
-import './table.css';
+import React from 'react';
 
 const PendingOrders = ({ buyOrderData, sellOrderData }) => {
-  const [buyerData, setBuyerData] = useState([]);
-  const [sellerData, setSellerData] = useState([]);
-  
-
-  // useEffect(() => {
-  //   axios.get('http://localhost:5455/getData')
-  //     .then(response => {
-  //       setBuyerData(response.data.buyerData);
-  //       setSellerData(response.data.sellerData);
-  //     })
-  //     .catch(error => console.error('Error fetching pending orders:', error));
-  // }, [refresh]);
-
-  useEffect(() => {
-    if (buyOrderData) {
-      setBuyerData(prevData => [...prevData, buyOrderData]);
-    }
-  }, [buyOrderData]);
-
-  useEffect(() => {
-    if (sellOrderData) {
-      setSellerData(prevData => [...prevData, sellOrderData]);
-    }
-  }, [sellOrderData]);
-  console.log(buyerData);
-
   return (
     <div>
       <h2>Pending Orders</h2>
@@ -44,9 +16,9 @@ const PendingOrders = ({ buyOrderData, sellOrderData }) => {
               </tr>
             </thead>
             <tbody>
-              {buyerData.map((order, index) => (
+              {buyOrderData.map((order, index) => (
                 <tr key={index}>
-                  <td>{order.qyt}</td>
+                  <td>{order.qty}</td>
                   <td>{order.price}</td>
                 </tr>
               ))}
@@ -64,10 +36,10 @@ const PendingOrders = ({ buyOrderData, sellOrderData }) => {
               </tr>
             </thead>
             <tbody>
-              {sellerData.map((order, index) => (
+              {sellOrderData.map((order, index) => (
                 <tr key={index}>
+                  <td>{order.qty}</td>
                   <td>{order.price}</td>
-                  <td>{order.qyt}</td>
                 </tr>
               ))}
             </tbody>

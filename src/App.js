@@ -1,15 +1,35 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import PendingOrders from './pendingOrders';
 import CompletedOrders from './completedOrders';
 import OrderForm from './orderForm';
 import './table.css';
 
 const App = () => {
-  const [refreshCounter, setRefreshCounter] = useState(0);
+  const [buyOrderData, setBuyOrderData] = useState([]);
+  const [sellOrderData, setSellOrderData] = useState([]);
 
-  const refreshData = () => {
-    setRefreshCounter(prevCounter => prevCounter + 1);
-    console.log("refresh counter:-",refreshCounter);
+  useEffect(() => {
+    const storedBuyOrders = localStorage.getItem('buyOrders');
+    const storedSellOrders = localStorage.getItem('sellOrders');
+
+    if (storedBuyOrders) {
+      setBuyOrderData(JSON.parse(storedBuyOrders));
+    }
+    if (storedSellOrders) {
+      setSellOrderData(JSON.parse(storedSellOrders));
+    }
+  }, []);
+
+  const refreshData = (orderData) => {
+    if (orderData.type === 'buy') {
+      const newBuyOrders = [...buyOrderData, orderData];
+      setBuyOrderData(newBuyOrders);
+      localStorage.setItem('buyOrders', JSON.stringify(newBuyOrders));
+    } else if (orderData.type === 'sell') {
+      const newSellOrders = [...sellOrderData, orderData];
+      setSellOrderData(newSellOrders);
+      localStorage.setItem('sellOrders', JSON.stringify(newSellOrders));
+    }
   };
 
   return (
@@ -18,10 +38,10 @@ const App = () => {
       <OrderForm onOrderPlaced={refreshData} />
       <div className="container">
         <div className="table-container">
-          <PendingOrders refresh={refreshCounter} />
+          <PendingOrders buyOrderData={buyOrderData} sellOrderData={sellOrderData} />
         </div>
         <div className="table-container">
-          <CompletedOrders refresh={refreshCounter} />
+          <CompletedOrders />
         </div>
       </div>
     </div>

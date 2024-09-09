@@ -1,8 +1,4 @@
-import { type } from '@testing-library/user-event/dist/type';
 import React, { useState } from 'react';
-// import axios from 'axios';
-// import tokenlist from "./erc20_tokens.json"
-
 
 const OrderForm = ({ onOrderPlaced }) => {
   const [formData, setFormData] = useState({ type: 'buy', price: '', qty: '' });
@@ -14,31 +10,16 @@ const OrderForm = ({ onOrderPlaced }) => {
     });
   };
 
-  const handleTokenChange = (e) => {
-  }
-
   const handleSubmit = (e) => {
     e.preventDefault();
-    // 
-    if (formData.type === 'buy') {
-      const buyOrderData = {
-        type: 'buy',
-        price: formData.price,
-        qty: formData.qty
-      };
-      onOrderPlaced(buyOrderData);
-      // You might need to implement a function to update the buy order component
-      // For example: updateBuyOrderComponent(buyOrderData);
-    } else if (formData.type === 'sell') {
-      const sellOrderData = {
-        type: 'sell',
-        price: formData.price,
-        qty: formData.qty
-      };
-      onOrderPlaced(sellOrderData);
-      // You might need to implement a function to update the sell order component
-      // For example: updateSellOrderComponent(sellOrderData);
-    }
+    const orderData = {
+      type: formData.type,
+      price: formData.price,
+      qty: formData.qty
+    };
+    onOrderPlaced(orderData);
+    // Reset form after submission
+    setFormData({ type: 'buy', price: '', qty: '' });
   };
 
   return (
@@ -47,15 +28,9 @@ const OrderForm = ({ onOrderPlaced }) => {
         <label>
           Type:
           <select name="type" value={formData.type} onChange={handleChange}>
-            <option value="buyer">Buy</option>
-            <option value="seller">Sell</option>
+            <option value="buy">Buy</option>
+            <option value="sell">Sell</option>
           </select>
-        </label>
-      </div>
-      <div>
-        <label>
-          ERC20 Token
-          <input type="text" name="token" onChange={handleTokenChange} />
         </label>
       </div>
       <div>
