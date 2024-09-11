@@ -16,12 +16,16 @@ const PendingOrders = ({ buyOrderData, sellOrderData }) => {
               </tr>
             </thead>
             <tbody>
-              {buyOrderData.map((order, index) => (
-                <tr key={index}>
-                  <td>{order.qty}</td>
-                  <td>{order.price}</td>
-                </tr>
-              ))}
+              {buyOrderData.length === 0 ? (
+                <tr><td colSpan="2">No buy orders</td></tr>
+              ) : (
+                buyOrderData.map((order, index) => (
+                  <tr key={index}>
+                    <td>{order.qty}</td>
+                    <td>{order.price}</td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
@@ -36,12 +40,16 @@ const PendingOrders = ({ buyOrderData, sellOrderData }) => {
               </tr>
             </thead>
             <tbody>
-              {sellOrderData.map((order, index) => (
-                <tr key={index}>
-                  <td>{order.qty}</td>
-                  <td>{order.price}</td>
-                </tr>
-              ))}
+              {sellOrderData.length === 0 ? (
+                <tr><td colSpan="2">No sell orders</td></tr>
+              ) : (
+                sellOrderData.map((order, index) => (
+                  <tr key={index}>
+                    <td>{order.qty}</td>
+                    <td>{order.price}</td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>

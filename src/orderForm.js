@@ -36,13 +36,13 @@ const OrderForm = ({ onOrderPlaced }) => {
       <div>
         <label>
           Price:
-          <input type="number" name="price" value={formData.price} onChange={handleChange} required />
+          <input type="number" step="0.01" name="price" value={formData.price} onChange={handleChange} required />
         </label>
       </div>
       <div>
         <label>
           Quantity:
-          <input type="number" name="qty" value={formData.qty} onChange={handleChange} required />
+          <input type="number" step="1" name="qty" value={formData.qty} onChange={handleChange} required />
         </label>
       </div>
       <button type="submit">Submit Order</button>
