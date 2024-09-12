@@ -4,144 +4,126 @@ import PendingOrders from './pendingOrders';
 import CompletedOrders from './completedOrders';
 import OrderForm from './orderForm';
 import contractABI from './contractABI.json';
+import tokenABI from './tokenABI.json';
 import './table.css';
+
+const contractAddress = '0xf554fB83e66484E5884ba92882E840A799Eb1861';
+const tokenAddress = '0xa21c2ff82d3Ad827899B11662445E51AE0DCbbB9';
 
 const App = () => {
   const [buyOrderData, setBuyOrderData] = useState([]);
   const [sellOrderData, setSellOrderData] = useState([]);
   const [completedOrders, setCompletedOrders] = useState([]);
+  const [provider, setProvider] = useState(null);
+  const [signer, setSigner] = useState(null);
   const [contract, setContract] = useState(null);
+  const [tokenContract, setTokenContract] = useState(null);
+  const [userAddress, setUserAddress] = useState(null);
+  const [isMetamaskConnecting, setIsMetaMaskConnecting] = useState(false);
 
-  useEffect(() => {
-    const connectToContract = async () => {
-      if (window.ethereum) {
-        const provider = new ethers.providers.Web3Provider(window.ethereum);
+  const connectToMetaMask = async () => {
+    try {
+      if (!isMetamaskConnecting && window.ethereum) {
+        setIsMetaMaskConnecting(true);
+        await window.ethereum.request({ method: 'eth_requestAccounts' });
 
-        // Ensure only one request for accounts at a time
-        if (provider.provider.selectedAddress) {
-          const signer = provider.getSigner();
-          const contractAddress = '0xf554fB83e66484E5884ba92882E840A799Eb1861'; // Your contract address
-          const contractInstance = new ethers.Contract(contractAddress, contractABI, signer);
-          setContract(contractInstance);
-        } else {
+        const ethProvider = new ethers.providers.Web3Provider(window.ethereum);
+        const userSigner = ethProvider.getSigner();
+        const userAddr = await userSigner.getAddress();
+        const orderbookContract = new ethers.Contract(contractAddress, contractABI, userSigner);
+        const erc20Contract = new ethers.Contract(tokenAddress, tokenABI, userSigner);
+
+        setProvider(ethProvider);
+        setSigner(userSigner);
+        setContract(orderbookContract);
+        setTokenContract(erc20Contract);
+        setUserAddress(userAddr);
+      } else if (!window.ethereum) {
+        alert('MetaMask is not installed. Please install MetaMask to use this feature.');
+      }
+    } catch (error) {
+      console.error('Error connecting to MetaMask:', error);
+    } finally {
+      setIsMetaMaskConnecting(false);
+    }
+  };
+
+  const approveTokens = async (amount) => {
+    try {
+      const tx = await tokenContract.approve(contractAddress, ethers.utils.parseEther(amount));
+      await tx.wait();
+      console.log('Tokens approved for contract.');
+    } catch (error) {
+      console.error('Token approval failed:', error);
+      throw new Error('Token approval failed.');
+    }
+  };
+
+  const matchOrders = async () => {
+    let updatedBuyOrders = [...buyOrderData];
+    let updatedSellOrders = [...sellOrderData];
+    const newCompletedOrders = [];
+
+    for (let buyIndex = 0; buyIndex < updatedBuyOrders.length; buyIndex++) {
+      for (let sellIndex = 0; sellIndex < updatedSellOrders.length; sellIndex++) {
+        const buyOrder = updatedBuyOrders[buyIndex];
+        const sellOrder = updatedSellOrders[sellIndex];
+
+        if (buyOrder.price === sellOrder.price && buyOrder.qty === sellOrder.qty) {
           try {
-            await provider.send("eth_requestAccounts", []);
-            const signer = provider.getSigner();
-            const contractAddress = '0xf554fB83e66484E5884ba92882E840A799Eb1861'; // Your contract address
-            const contractInstance = new ethers.Contract(contractAddress, contractABI, signer);
-            setContract(contractInstance);
+            // Approve tokens before matching orders
+            await approveTokens(sellOrder.qty);
+
+            // Add matched orders to completedOrders
+            newCompletedOrders.push({
+              price: buyOrder.price,
+              qty: buyOrder.qty,
+              type: 'matched',
+            });
+
+            // Remove matched orders from pending lists
+            updatedBuyOrders.splice(buyIndex, 1);
+            updatedSellOrders.splice(sellIndex, 1);
+
+            // Update states with the matched orders
+            setBuyOrderData(updatedBuyOrders);
+            setSellOrderData(updatedSellOrders);
+            setCompletedOrders(prev => [...prev, ...newCompletedOrders]);
+
+            return; // Exit after processing the first match
           } catch (error) {
-            console.error('Error requesting accounts:', error);
+            console.error('Transaction failed:', error);
+            return;
           }
         }
-      } else {
-        alert('Please install MetaMask!');
       }
-    };
-
-    connectToContract();
-  }, []);
+    }
+  };
 
   useEffect(() => {
-    const matchOrders = async () => {
-      if (!contract) return;
-
-      try {
-        const sellOrders = await contract.sOrders(); // Get all sell orders
-        const updatedSellOrders = [...sellOrderData];
-        const updatedBuyOrders = [...buyOrderData];
-
-        for (const buyOrder of buyOrderData) {
-          for (const sellOrder of sellOrders) {
-            if (
-              buyOrder.price === ethers.utils.formatEther(sellOrder.Price) &&
-              buyOrder.qty <= sellOrder.numberOfToken
-            ) {
-              // Execute transaction
-              const tx = await contract.Buy(buyOrder.qty, ethers.utils.parseEther(buyOrder.price), {
-                value: ethers.utils.parseEther(buyOrder.price)
-              });
-              await tx.wait();
-              console.log('Buy order executed:', tx);
-
-              // Update sell order quantity or remove it
-              const updatedSellOrder = {
-                ...sellOrder,
-                numberOfToken: sellOrder.numberOfToken - buyOrder.qty
-              };
-
-              if (updatedSellOrder.numberOfToken === 0) {
-                // Remove the sell order from local state
-                updatedSellOrders.splice(updatedSellOrders.indexOf(sellOrder), 1);
-              } else {
-                // Update the sell order in local state
-                const index = updatedSellOrders.indexOf(sellOrder);
-                if (index !== -1) {
-                  updatedSellOrders[index] = updatedSellOrder;
-                }
-              }
-
-              // Remove the matched buy order from local state
-              updatedBuyOrders.splice(updatedBuyOrders.indexOf(buyOrder), 1);
-              break; // Exit loop after executing the transaction
-            }
-          }
-        }
-
-        // Update local state
-        setSellOrderData(updatedSellOrders);
-        setBuyOrderData(updatedBuyOrders);
-
-      } catch (error) {
-        console.error('Error matching orders:', error);
-      }
-    };
-
-    const interval = setInterval(matchOrders, 5000); // Poll every 5 seconds
-    return () => clearInterval(interval); // Cleanup on unmount
-  }, [contract, buyOrderData, sellOrderData]);
+    if (buyOrderData.length > 0 && sellOrderData.length > 0) {
+      matchOrders();
+    }
+  }, [buyOrderData, sellOrderData]);
 
   const refreshData = async (orderData) => {
-    
-    if (orderData.type === 'buy') {
-      try {
-        const newBuyOrder = {
-          type: 'buy',
-          price: orderData.price,
-          qty: orderData.qty,
-        };
-        setBuyOrderData(prev => [...prev, newBuyOrder]);
-
-        // Handle order execution and matching here
-        // This is just a placeholder for when you later implement order matching
-      } catch (error) {
-        console.error('Error placing buy order:', JSON.stringify(error, null, 2));
+    try {
+      if (orderData.type === 'buy') {
+        setBuyOrderData(prev => [...prev, orderData]);
+      } else if (orderData.type === 'sell') {
+        setSellOrderData(prev => [...prev, orderData]);
       }
-    } else if (orderData.type === 'sell') {
-      try {
-        const newSellOrder = {
-          type: 'sell',
-          price: orderData.price,
-          qty: orderData.qty,
-        };
-        setSellOrderData(prev => [...prev, newSellOrder]);
-
-        const tokenContract = await contract._token(); // Assuming _token is a method to get the token contract
-        const approveTx = await tokenContract.approve(contract.address, ethers.utils.parseEther(orderData.qty));
-        await approveTx.wait();
-
-        const tx = await contract.sell(ethers.utils.parseEther(orderData.price), ethers.utils.parseEther(orderData.qty));
-        await tx.wait();
-        console.log('Sell order placed successfully', tx);
-      } catch (error) {
-        console.error('Error placing sell order:', JSON.stringify(error, null, 2));
-      }
+    } catch (error) {
+      console.error('Error placing order:', error);
     }
   };
 
   return (
     <div>
       <h1>P2P Order Matching System</h1>
+      <button onClick={connectToMetaMask} disabled={isMetamaskConnecting}>
+        {userAddress ? `Connected: ${userAddress}` : 'Connect MetaMask'}
+      </button>
       <OrderForm onOrderPlaced={refreshData} />
       <div className="container">
         <div className="table-container">
